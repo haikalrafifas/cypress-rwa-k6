@@ -1,15 +1,14 @@
 name: Load Test Backend API with k6
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main]
-  pull_request:
+    branches: [ develop ]
 
 jobs:
   load-test:
     runs-on: ubuntu-latest
-    services:
-      # Optional: Define a service if needed, or run container manually
+    
     steps:
       - uses: actions/checkout@v3
 
@@ -40,7 +39,20 @@ jobs:
 
       - name: Run k6 load test
         run: |
-          k6 run load-tests/load-test.js
+          k6 run --out json=report.json tests/k6_load_test.js
+
+      - name: Install k6-reporter
+        run: npm install -g k6-reporter
+
+      - name: Generate HTML report
+        run: |
+          k6-reporter report.json > report.html
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-load-test-report
+          path: report.html
 
       - name: Stop backend API container
         if: always()
