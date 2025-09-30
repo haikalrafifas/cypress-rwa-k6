@@ -1,0 +1,78 @@
+name: k6 Load Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ develop ]
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      BASE_URL: "http://127.0.0.1:3001/api"
+      TEST_USER_EMAIL: "user@email.com"
+      TEST_USER_PASSWROD: "Password123!"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          yarn install
+
+      - name: Start API server in background
+        run: |
+          nohup yarn start:api &> api.log & echo "Waiting for API to start..."
+          for i in {1..20}; do
+            if curl -sSf http://127.0.0.1:3001/api/health >/dev/null 2>&1; then
+              echo "API is up"
+              break
+            fi
+
+            sleep 2
+
+            if [ $i -eq 20 ]; then
+              echo "API did not start. Dumping api.log:" && cat api.log
+              exit 1
+            fi
+          done
+
+      - name: Install k6
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg2 wget
+
+          if ! command -v k6 >/dev/null 2>&1; then
+            wget -q -O - https://dl.k6.io/key.gpg | sudo apt-key add -
+            echo "dev https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+            sudo apt-get update
+            sudo apt-get install -y k6
+          fi
+
+          k6 version
+
+      - name: Run k6 test (JSON output)
+        run: |
+          mkdir -p k6-results
+          if ! k6 run --out json=k6-results/results.json tests/k6_load_test.js; then
+            echo "k6 test failed" && exit 1
+          fi
+
+      - name: Generate HTML report (k6-reporter)
+        run: |
+          yarn global add k6-reporter@latest
+          k6-reporter k6-results/results.json k6-results/report.html || echo "k6-reporter returned non-zero (report may still exist)"
+
+      - name: Upload k6 results artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-report
+          path: k6-results/*
