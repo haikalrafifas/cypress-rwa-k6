@@ -26,11 +26,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install --legacy-peer-deps
+          yarn install
 
       - name: Start API server in background
         run: |
-          nohup npm run start:api &> api.log & echo "Waiting for API to start..."
+          nohup yarn start:api &> api.log & echo "Waiting for API to start..."
           for i in {1..20}; do
             if curl -sSf http://127.0.0.1:3001/api/health >/dev/null 2>&1; then
               echo "API is up"
@@ -68,7 +68,7 @@ jobs:
 
       - name: Generate HTML report (k6-reporter)
         run: |
-          npm install -g k6-reporter@latest
+          yarn global add k6-reporter@latest
           k6-reporter k6-results/results.json k6-results/report.html || echo "k6-reporter returned non-zero (report may still exist)"
 
       - name: Upload k6 results artifact
