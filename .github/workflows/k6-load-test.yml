@@ -41,18 +41,24 @@ jobs:
         run: |
           k6 run --out json=report.json tests/k6_load_test.js
 
-      - name: Install k6-reporter
-        run: npm install -g k6-reporter
-
-      - name: Generate HTML report
-        run: |
-          k6-reporter report.json > report.html
-
-      - name: Upload HTML report
+      - name: Upload JSON report
         uses: actions/upload-artifact@v4
         with:
           name: k6-load-test-report
-          path: report.html
+          path: report.json
+
+      # - name: Install k6-reporter
+      #   run: npm install -g k6-reporter
+
+      # - name: Generate HTML report
+      #   run: |
+      #     k6-reporter report.json > report.html
+
+      # - name: Upload HTML report
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: k6-load-test-report
+      #     path: report.html
 
       - name: Stop backend API container
         if: always()
